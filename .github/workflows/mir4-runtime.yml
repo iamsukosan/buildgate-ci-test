@@ -1,0 +1,50 @@
+# Disposable MIR4 runtime qualification only. No application or deployment.
+name: MIR4 runtime qualification
+
+on:
+  push:
+    branches:
+      - codex/mir4-runtime-positive
+      - codex/mir4-runtime-negative
+  workflow_dispatch:
+    inputs:
+      runtime:
+        description: Correct runtime or deliberate rejection control
+        required: true
+        default: '24.22.2'
+        type: choice
+        options:
+          - '24.22.2'
+          - '24.19.0'
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: ${{ inputs.runtime || (github.ref_name == 'codex/mir4-runtime-negative' && '24.19.0' || '24.22.2') }}
+      - name: Record observed identity before the gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          printf 'OS=%s %s Node=%s npm=%s\n' "$ID" "$VERSION_ID" "$(node --version)" "$(npm --version)"
+      - name: Assert application runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          test "$ID" = ubuntu && test "$VERSION_ID" = 24.04
+          test "$(node --version)" = v24.22.2
+          test "$(npm --version)" = 11.19.1
+          printf 'OS=%s %s Node=%s npm=%s\n' "$ID" "$VERSION_ID" "$(node --version)" "$(npm --version)"
+      - name: Runtime-dependent sentinel
+        shell: bash
+        run: echo 'MIR4_RUNTIME_GATE_PASSED'
